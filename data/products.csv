@@ -1,0 +1,6 @@
+sku,name,category,wholesale_cost_per_lb,yield_percent,default_retail_price_per_lb
+BEEF-RIBEYE,Ribeye Steak,Beef,11.00,85,19.99
+BEEF-GROUND,Ground Beef,Beef,4.25,95,7.99
+POULTRY-CHICKEN-BREAST,Chicken Breast,Poultry,2.85,90,6.99
+PORK-SHOULDER,Pork Shoulder,Pork,2.60,82,5.99
+LAMB-CHOPS,Lamb Chops,Lamb,9.50,80,17.99
