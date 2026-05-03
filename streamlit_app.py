@@ -13,11 +13,7 @@ from core.products import load_products
 from core.reporting import order_csv_text, receipt_text
 
 
-st.set_page_config(
-    page_title="Butcher Shop Cost Analyzer",
-    page_icon="🥩",
-    layout="wide",
-)
+st.set_page_config(page_title="Butcher Shop Cost Analyzer", page_icon="🥩", layout="wide")
 
 
 def money(value: float) -> str:
@@ -31,10 +27,10 @@ def load_product_table(csv_path: str) -> pd.DataFrame:
 
 def initialize_session() -> None:
     if "order_id" not in st.session_state:
-        st.session_state.order_id = generate_order_id()
+        st.session_state["order_id"] = generate_order_id()
 
-    if "items" not in st.session_state:
-        st.session_state.items = []
+    if "order_items" not in st.session_state:
+        st.session_state["order_items"] = []
 
 
 initialize_session()
@@ -45,37 +41,17 @@ st.caption("Automate order quotes, final weighed pricing, deposits, balances, an
 with st.sidebar:
     st.header("Business Settings")
 
-    labor_rate = st.number_input(
-        "Labor Rate per Hour",
-        min_value=0.0,
-        value=float(LABOR_RATE_PER_HOUR),
-        step=1.0,
-        format="%.2f",
-    )
-
-    overhead_cost = st.number_input(
-        "Overhead Cost per Item",
-        min_value=0.0,
-        value=float(OVERHEAD_COST_PER_ORDER_ITEM),
-        step=0.50,
-        format="%.2f",
-    )
-
-    target_margin = st.number_input(
-        "Target Margin %",
-        min_value=1.0,
-        max_value=99.0,
-        value=float(TARGET_MARGIN_PERCENT),
-        step=1.0,
-        format="%.2f",
-    )
+    labor_rate = st.number_input("Labor Rate per Hour", min_value=0.0, value=float(LABOR_RATE_PER_HOUR), step=1.0, format="%.2f")
+    overhead_cost = st.number_input("Overhead Cost per Item", min_value=0.0, value=float(OVERHEAD_COST_PER_ORDER_ITEM), step=0.50, format="%.2f")
+    target_margin = st.number_input("Target Margin %", min_value=1.0, max_value=99.0, value=float(TARGET_MARGIN_PERCENT), step=1.0, format="%.2f")
 
     st.divider()
 
-    if st.button("Start New Order", use_container_width=True):
-        st.session_state.order_id = generate_order_id()
-        st.session_state.items = []
+    if st.button("Start New Order", width="stretch"):
+        st.session_state["order_id"] = generate_order_id()
+        st.session_state["order_items"] = []
         st.rerun()
+
 
 products = load_products(PRODUCTS_CSV_PATH)
 product_df = load_product_table(PRODUCTS_CSV_PATH)
@@ -100,14 +76,10 @@ with left:
 
 with right:
     st.subheader("Product Database")
-    st.dataframe(
-        product_df,
-        use_container_width=True,
-        hide_index=True,
-    )
+    st.dataframe(product_df, width="stretch", hide_index=True)
+
 
 st.divider()
-
 st.subheader("Add Meat Item")
 
 item_col1, item_col2, item_col3, item_col4 = st.columns([2, 1, 1, 1])
@@ -129,10 +101,10 @@ with item_col3:
 with item_col4:
     packaging_cost = st.number_input("Packaging Cost", min_value=0.0, value=1.00, step=0.25, format="%.2f")
 
-add_item = st.button("Add Item to Order", type="primary")
 
-if add_item:
+if st.button("Add Item to Order", type="primary"):
     product = products[selected_sku]
+
     order_item = OrderItem(
         product=product,
         final_weight_lbs=final_weight,
@@ -142,19 +114,18 @@ if add_item:
 
     try:
         breakdown = analyzer.calculate_item_cost(order_item)
-        st.session_state.items.append(breakdown)
+        st.session_state["order_items"].append(breakdown)
         st.success(f"Added {breakdown.product_name} — Recommended Price: {money(breakdown.selling_price)}")
     except ValueError as error:
         st.error(str(error))
 
-if st.session_state.items:
+
+if st.session_state["order_items"]:
     st.divider()
     st.subheader("Current Order Items")
 
-    items_df = pd.DataFrame([
-        item if isinstance(item, dict) else item.__dict__
-        for item in st.session_state.items
-    ])
+    items_df = pd.DataFrame([item.__dict__ for item in st.session_state["order_items"]])
+
     display_columns = [
         "sku",
         "product_name",
@@ -171,11 +142,7 @@ if st.session_state.items:
         "margin_percent",
     ]
 
-    st.dataframe(
-        items_df[display_columns],
-        use_container_width=True,
-        hide_index=True,
-    )
+    st.dataframe(items_df[display_columns], width="stretch", hide_index=True)
 
     remove_col, clear_col = st.columns([1, 1])
 
@@ -183,20 +150,22 @@ if st.session_state.items:
         remove_index = st.number_input(
             "Remove item row number",
             min_value=1,
-            max_value=len(st.session_state.items),
+            max_value=len(st.session_state["order_items"]),
             value=1,
             step=1,
         )
+
         if st.button("Remove Selected Item"):
-            st.session_state.items.pop(remove_index - 1)
+            st.session_state["order_items"].pop(remove_index - 1)
             st.rerun()
 
     with clear_col:
         st.write("")
         st.write("")
         if st.button("Clear All Items"):
-            st.session_state.items = []
+            st.session_state["order_items"] = []
             st.rerun()
+
 
 customer = Customer(
     name=customer_name.strip() or "Unknown Customer",
@@ -206,17 +175,19 @@ customer = Customer(
 )
 
 order = OrderSummary(
-    order_id=st.session_state.order_id,
+    order_id=st.session_state["order_id"],
     customer=customer,
-    items=st.session_state.items,
+    items=st.session_state["order_items"],
     deposit_paid=deposit_paid,
     status=order_status,
 )
+
 
 st.divider()
 st.subheader("Order Summary")
 
 metric1, metric2, metric3, metric4, metric5 = st.columns(5)
+
 metric1.metric("Internal Cost", money(order.total_internal_cost))
 metric2.metric("Customer Price", money(order.final_customer_price))
 metric3.metric("Deposit Paid", money(order.deposit_paid))
@@ -234,7 +205,7 @@ with download_col1:
         file_name=f"{order.order_id}_cost_analysis.csv",
         mime="text/csv",
         disabled=not bool(order.items),
-        use_container_width=True,
+        width="stretch",
     )
 
 with download_col2:
@@ -244,7 +215,7 @@ with download_col2:
         file_name=f"{order.order_id}_customer_receipt.txt",
         mime="text/plain",
         disabled=not bool(order.items),
-        use_container_width=True,
+        width="stretch",
     )
 
 with st.expander("Receipt Preview"):
