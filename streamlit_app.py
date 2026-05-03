@@ -151,7 +151,10 @@ if st.session_state.items:
     st.divider()
     st.subheader("Current Order Items")
 
-    items_df = pd.DataFrame([item.__dict__ for item in st.session_state.items])
+    items_df = pd.DataFrame([
+        item if isinstance(item, dict) else item.__dict__
+        for item in st.session_state.items
+    ])
     display_columns = [
         "sku",
         "product_name",
